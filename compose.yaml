@@ -2,6 +2,7 @@ services:
 
   mongo:
     image: mongo
+    container_name: mongodb
     restart: always
     logging:
       driver: none
@@ -12,22 +13,10 @@ services:
       retries: 5
       start_period: 10s
 
-  backend-test:
-    build:
-      context: backend
-      dockerfile: ../Dockerfile.backend
-    environment:
-      DB_ADDRESS: mongodb://mongo:27017/mestodb
-    command: npm run lint
-    restart: 'no'
-    depends_on:
-      mongo:
-        condition: service_healthy
-
   backend:
     build:
-      context: backend
-      dockerfile: ../Dockerfile.backend
+      dockerfile: backend/backend.Dockerfile
+    container_name: backend
     environment:
       DB_ADDRESS: mongodb://mongo:27017/mestodb
     depends_on:
@@ -37,26 +26,47 @@ services:
       - 3001:3000
     healthcheck:
       interval: 10s
-      timeout: 2s 
-      start_period: 15s 
-      retries: 5 
+      timeout: 2s
+      start_period: 15s
+      retries: 5
       test: node healthcheck.js
 
-  frontend-test:
+  frontend-auth:
     build:
-      context: frontend
-      dockerfile: ../Dockerfile.frontend
-    command: yarn test:microfrontend
-    restart: 'no'
-    environment:
-          CI: true
-
-  frontend:
-    build:
-      context: frontend
-      dockerfile: ../Dockerfile.frontend
+      dockerfile: frontend-auth/auth/frontend-auth.Dockerfile
+    container_name: frontend-auth
     ports:
-      - 3000:3000
+      - 8081:8081
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  frontend-profile:
+    build:
+      dockerfile: frontend-profile/profile/frontend-profile.Dockerfile
+    container_name: frontend-profile
+    ports:
+      - 8082:8082
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  frontend-photo:
+    build:
+      dockerfile: frontend-photo/photo/frontend-photo.Dockerfile
+    container_name: frontend-photo
+    ports:
+      - 8083:8083
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  frontend-facade:
+    build:
+      dockerfile: frontend-facade/facade/frontend-facade.Dockerfile
+    container_name: frontend-facade
+    ports:
+      - 8080:8080
     depends_on:
       backend:
         condition: service_healthy
